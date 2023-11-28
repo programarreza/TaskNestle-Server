@@ -20,6 +20,7 @@ const client = new MongoClient(`${process.env.DATABASE_LOCAL}`, {
 async function run() {
   try {
     const usersCollection = client.db("taskNestleDB").collection("users");
+    const assetCollection = client.db("taskNestleDB").collection("assets");
     const assetCustomRequestCollection = client
       .db("taskNestleDB")
       .collection("customRequest");
@@ -83,6 +84,17 @@ async function run() {
       );
       res.send(result);
     });
+
+    // admin area
+    app.post("/add-product", async (req, res) => {
+      const asset = req.body;
+      const result = await assetCollection.insertOne(asset);
+      res.send(result);
+    });
+
+
+
+
 
     // google login user
     app.put("/users/:email", async (req, res) => {
