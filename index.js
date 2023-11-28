@@ -85,8 +85,6 @@ async function run() {
       res.send(result);
     });
 
-
-
     // admin area
     app.post("/add-product", async (req, res) => {
       const asset = req.body;
@@ -109,13 +107,42 @@ async function run() {
       res.send(result);
     });
 
-
     app.get("/asset/:id", async (req, res) => {
       const id = req.params.id;
-      const result = await assetCollection.findOne({_id: new ObjectId(id)})
+      const result = await assetCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
+    // all custom asset get
+    app.get("/custom-asset", async (req, res) => {
+      const result = await assetCustomRequestCollection.find().toArray();
+      res.send(result);
+    });
+
+    // custom asset request reject
+    app.delete("/custom-asset/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assetCustomRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // update custom asset to approve
+    app.patch("/custom-asset-update/:id", async (req, res) => {
+      const asset = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateAsset = {
+        $set: {
+          status: asset.status,
+        },
+      };
+      const result = assetCustomRequestCollection.updateOne(
+        filter,
+        updateAsset
+      );
+      res.send(result);
+    });
 
     // single product update
     app.patch("/product-update/:id", async (req, res) => {
@@ -129,16 +156,11 @@ async function run() {
           type: asset.type,
         },
       };
-      const result = assetCollection.updateOne(
-        filter,
-        updateProduct
-      );
+      const result = assetCollection.updateOne(filter, updateProduct);
       res.send(result);
     });
 
-
-
-
+    
 
     // google login user
     app.put("/users/:email", async (req, res) => {
