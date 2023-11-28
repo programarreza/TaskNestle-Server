@@ -85,10 +85,54 @@ async function run() {
       res.send(result);
     });
 
+
+
     // admin area
     app.post("/add-product", async (req, res) => {
       const asset = req.body;
       const result = await assetCollection.insertOne(asset);
+      res.send(result);
+    });
+
+    // get all assets
+    app.get("/assets/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await assetCollection.find({ email }).toArray();
+      res.send(result);
+    });
+
+    // single asset delete
+    app.delete("/asset/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assetCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+    app.get("/asset/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await assetCollection.findOne({_id: new ObjectId(id)})
+      res.send(result);
+    });
+
+
+    // single product update
+    app.patch("/product-update/:id", async (req, res) => {
+      const asset = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateProduct = {
+        $set: {
+          name: asset.name,
+          quantity: asset.quantity,
+          type: asset.type,
+        },
+      };
+      const result = assetCollection.updateOne(
+        filter,
+        updateProduct
+      );
       res.send(result);
     });
 
