@@ -95,6 +95,42 @@ async function run() {
 
 
     
+    // get all request asset
+    app.get("/request-asset", async (req, res) => {
+      const result = await assetRequestCollection.find().toArray();
+      res.send(result);
+    });
+
+    // delete
+    app.delete("/request-asset/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assetRequestCollection.deleteOne(query);
+      res.send(result);
+    });
+
+
+     // update request asset to approve
+     app.patch("/request-asset-update/:id", async (req, res) => {
+      const asset = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateAsset = {
+        $set: {
+          status: asset.status,
+        },
+      };
+      const result = assetRequestCollection.updateOne(
+        filter,
+        updateAsset
+      );
+      res.send(result);
+    });
+
+
+
+
+
 
     // update asset
     app.patch("/asset-update/:id", async (req, res) => {
@@ -212,7 +248,7 @@ async function run() {
       res.send(result);
     });
 
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
