@@ -21,6 +21,9 @@ async function run() {
   try {
     const usersCollection = client.db("taskNestleDB").collection("users");
     const assetCollection = client.db("taskNestleDB").collection("assets");
+    const assetRequestCollection = client
+      .db("taskNestleDB")
+      .collection("requestAssets");
     const assetCustomRequestCollection = client
       .db("taskNestleDB")
       .collection("customRequest");
@@ -33,9 +36,29 @@ async function run() {
     });
 
     // get to user role
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find({ role: "employee" }).toArray();
+      res.send(result);
+    });
+
+    // get to specific user
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
       const result = await usersCollection.findOne({ email });
+      res.send(result);
+    });
+
+    // all product get
+    app.get("/assets", async (req, res) => {
+      const result = await assetCollection.find().toArray();
+      res.send(result);
+    });
+
+    // delete user
+    app.delete("/user/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
       res.send(result);
     });
 
@@ -62,6 +85,16 @@ async function run() {
       });
       res.send(result);
     });
+
+    // request asset
+    app.post("/request-asset", async (req, res) => {
+      const asset = req.body;
+      const result = await assetRequestCollection.insertOne(asset);
+      res.send(result);
+    });
+
+
+    
 
     // update asset
     app.patch("/asset-update/:id", async (req, res) => {
@@ -159,8 +192,6 @@ async function run() {
       const result = assetCollection.updateOne(filter, updateProduct);
       res.send(result);
     });
-
-    
 
     // google login user
     app.put("/users/:email", async (req, res) => {
