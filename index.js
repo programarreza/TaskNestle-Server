@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -21,6 +22,7 @@ async function run() {
   try {
     const usersCollection = client.db("taskNestleDB").collection("users");
     const assetCollection = client.db("taskNestleDB").collection("assets");
+    const paymentCollection = client.db("taskNestleDB").collection("payments");
     const assetRequestCollection = client
       .db("taskNestleDB")
       .collection("requestAssets");
@@ -41,10 +43,24 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/all-users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get pending role user
+    app.get("/pendingUser/:email", async (req, res) => {
+      const query = { role: "pending", email: req.params.email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+
     // get to specific user
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
+      console.log(email);
       const result = await usersCollection.findOne({ email });
+      console.log(result);
       res.send(result);
     });
 
@@ -93,11 +109,27 @@ async function run() {
       res.send(result);
     });
 
-
-    
     // get all request asset
     app.get("/request-asset", async (req, res) => {
       const result = await assetRequestCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get all pending request asset
+    app.get("/pending-assets/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+        status: "pending",
+      };
+      const result = await assetRequestCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // my requested asset
+    app.get("/request-assets/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await assetRequestCollection.find({ email }).toArray();
       res.send(result);
     });
 
@@ -109,9 +141,8 @@ async function run() {
       res.send(result);
     });
 
-
-     // update request asset to approve
-     app.patch("/request-asset-update/:id", async (req, res) => {
+    // update request asset to returned
+    app.patch("/request-asset/:id", async (req, res) => {
       const asset = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -120,17 +151,24 @@ async function run() {
           status: asset.status,
         },
       };
-      const result = assetRequestCollection.updateOne(
-        filter,
-        updateAsset
-      );
+      const result = assetRequestCollection.updateOne(filter, updateAsset);
       res.send(result);
     });
 
-
-
-
-
+    // update request asset to approve
+    app.patch("/request-asset-update/:id", async (req, res) => {
+      const asset = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateAsset = {
+        $set: {
+          status: asset.status,
+          approvedDate: asset.approvedDate,
+        },
+      };
+      const result = assetRequestCollection.updateOne(filter, updateAsset);
+      res.send(result);
+    });
 
     // update asset
     app.patch("/asset-update/:id", async (req, res) => {
@@ -246,6 +284,54 @@ async function run() {
         options
       );
       res.send(result);
+    });
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      console.log(price);
+      const amount = parseInt(price * 100);
+      console.log(amount, "amount inside the intent");
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+      
+      let limit = payment.limit;
+      if (payment.limit === 5) {
+       limit = 5;
+      } else if (payment.limit === 8) {
+        limit = 10;
+      } else if (payment.limit === 15) {
+        limit = 20;
+      }
+      else{
+       console.log("Unknown limit value:", limit);
+      }
+
+      console.log(334, limit);
+      const updateProduct = {
+        $set: {
+          role: "admin",
+          limit: limit,
+        },
+      };
+
+      const updateResult = await usersCollection.updateOne(
+        { email: payment.email },
+        updateProduct
+      );
+      res.send({ paymentResult, updateResult });
     });
 
     // await client.connect();
