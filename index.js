@@ -23,6 +23,7 @@ async function run() {
     const usersCollection = client.db("taskNestleDB").collection("users");
     const assetCollection = client.db("taskNestleDB").collection("assets");
     const paymentCollection = client.db("taskNestleDB").collection("payments");
+    const packageCollection = client.db("taskNestleDB").collection("package");
     const assetRequestCollection = client
       .db("taskNestleDB")
       .collection("requestAssets");
@@ -37,10 +38,16 @@ async function run() {
       res.send(result);
     });
 
-    // get to user role
+    // get to user employee role
     app.get("/users", async (req, res) => {
       const result = await usersCollection.find({ role: "employee" }).toArray();
       res.send(result);
+    });
+
+    app.get("/normalUsers", async (req, res) => {
+      const result = await usersCollection.find({ role: "user" }).toArray();
+      res.send(result);
+      console.log(result);
     });
 
     app.get("/all-users", async (req, res) => {
@@ -58,9 +65,24 @@ async function run() {
     // get to specific user
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email);
+      // console.log(email);
       const result = await usersCollection.findOne({ email });
-      console.log(result);
+      // console.log(result);
+      res.send(result);
+    });
+
+    // update user role add to admin team
+    app.patch("/addedTeam/:id", async (req, res) => {
+      const addTeam = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateAddTeam = {
+        $set: {
+          role: 'employee',
+          adminEmail: addTeam.email
+        },
+      };
+      const result = usersCollection.updateOne(filter, updateAddTeam);
       res.send(result);
     });
 
@@ -306,23 +328,26 @@ async function run() {
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = await paymentCollection.insertOne(payment);
-      
+
       let limit = payment.limit;
       if (payment.limit === 5) {
-       limit = 5;
+        limit = 5;
       } else if (payment.limit === 8) {
         limit = 10;
       } else if (payment.limit === 15) {
         limit = 20;
-      }
-      else{
-       console.log("Unknown limit value:", limit);
+      } else {
+        console.log("Unknown limit value:", limit);
       }
 
       console.log(334, limit);
+
       const updateProduct = {
         $set: {
           role: "admin",
+          // limit: limit,
+        },
+        $inc: {
           limit: limit,
         },
       };
@@ -332,6 +357,21 @@ async function run() {
         updateProduct
       );
       res.send({ paymentResult, updateResult });
+    });
+
+    // package item
+    app.get("/packages", async (req, res) => {
+      const result = await packageCollection.find().toArray();
+      res.send(result);
+    });
+
+    // get single package
+    app.get("/singePackage/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await packageCollection.findOne(query);
+      res.send(result);
+      console.log(result);
     });
 
     // await client.connect();
