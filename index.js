@@ -50,10 +50,11 @@ async function run() {
       console.log(result);
     });
 
-    app.get("/all-users", async (req, res) => {
-      const result = await usersCollection.find().toArray();
-      res.send(result);
-    });
+  
+    // app.get("/all-users", async (req, res) => {
+    //   const result = await usersCollection.find().toArray();
+    //   res.send(result);
+    // });
 
     // get pending role user
     app.get("/pendingUser/:email", async (req, res) => {
@@ -88,7 +89,18 @@ async function run() {
 
     // all product get
     app.get("/assets", async (req, res) => {
-      const result = await assetCollection.find().toArray();
+
+      const queryObj = {}
+      const name = req.query.name
+      const type = req.query.type
+
+      if(name){
+        queryObj.name = name 
+      }
+      if(type){
+        queryObj.type = type 
+      }
+      const result = await assetCollection.find(queryObj).toArray();
       res.send(result);
     });
 
@@ -221,7 +233,7 @@ async function run() {
       res.send(result);
     });
 
-    // get all assets
+    // get all assets TODO: all load korle hobe nah email  dia filter korte hobe 
     app.get("/assets/:email", async (req, res) => {
       const email = req.params.email;
       const result = await assetCollection.find({ email }).toArray();
