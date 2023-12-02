@@ -66,9 +66,7 @@ async function run() {
     // get to specific user
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
-      // console.log(email);
       const result = await usersCollection.findOne({ email });
-      // console.log(result);
       res.send(result);
     });
 
@@ -95,10 +93,10 @@ async function run() {
       const type = req.query.type
 
       if(name){
-        queryObj.name = name 
+        queryObj.name = {$regex: new RegExp(name, 'i')} ;
       }
       if(type){
-        queryObj.type = type 
+        queryObj.type = {$regex: new RegExp(type)} 
       }
       const result = await assetCollection.find(queryObj).toArray();
       res.send(result);
@@ -144,8 +142,21 @@ async function run() {
     });
 
     // get all request asset
-    app.get("/request-asset", async (req, res) => {
-      const result = await assetRequestCollection.find().toArray();
+    app.get("/request-asset/:adminEmail", async (req, res) => {
+      const adminEmail = req.params.adminEmail;
+      const queryObj = {
+        adminEmail,
+      }
+      const email = req.query.email
+      // const type = req.query.type
+
+      if(email){
+        queryObj.email = {$regex: new RegExp(email, 'i')} ;
+      }
+      // if(type){
+      //   queryObj.type = {$regex: new RegExp(type)} 
+      // }
+      const result = await assetRequestCollection.find(queryObj).toArray();
       res.send(result);
     });
 
@@ -162,10 +173,24 @@ async function run() {
 
     // my requested asset
     app.get("/request-assets/:email", async (req, res) => {
-      const email = req.params.email;
-      const result = await assetRequestCollection.find({ email }).toArray();
+      const adminEmail = req.params.email;
+      const queryObj = {
+        adminEmail,
+      }
+      const name = req.query.name
+      const type = req.query.type
+
+      if(name){
+        queryObj.name = {$regex: new RegExp(name, 'i')} ;
+      }
+      if(type){
+        queryObj.type = {$regex: new RegExp(type)} 
+      }
+      const result = await assetRequestCollection.find(queryObj).toArray();
       res.send(result);
     });
+
+
 
     // delete
     app.delete("/request-asset/:id", async (req, res) => {
@@ -233,12 +258,35 @@ async function run() {
       res.send(result);
     });
 
-    // get all assets TODO: all load korle hobe nah email  dia filter korte hobe 
+    // get all assets access only admin 
     app.get("/assets/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await assetCollection.find({ email }).toArray();
+
+      const queryObj = {
+        email,
+      }
+      const sortObj = {}
+
+      const name = req.query.name
+      const type = req.query.type
+      const sortField = req.query.sortField
+      const sortOrder = req.query.sortOrder
+
+
+      if(name){
+        queryObj.name = {$regex: new RegExp(name, 'i')} ;
+      }
+      if(type){
+        queryObj.type = {$regex: new RegExp(type)} 
+      }
+      if(sortField && sortOrder){
+        sortObj[sortField] = sortOrder
+      }
+
+      const result = await assetCollection.find(queryObj).sort(sortObj).toArray();
       res.send(result);
     });
+
 
     // single asset delete
     app.delete("/asset/:id", async (req, res) => {
