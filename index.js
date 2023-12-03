@@ -50,12 +50,6 @@ async function run() {
       console.log(result);
     });
 
-  
-    // app.get("/all-users", async (req, res) => {
-    //   const result = await usersCollection.find().toArray();
-    //   res.send(result);
-    // });
-
     // get pending role user
     app.get("/pendingUser/:email", async (req, res) => {
       const query = { role: "pending", email: req.params.email };
@@ -77,8 +71,8 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updateAddTeam = {
         $set: {
-          role: 'employee',
-          adminEmail: addTeam.email
+          role: "employee",
+          adminEmail: addTeam.email,
         },
       };
       const result = usersCollection.updateOne(filter, updateAddTeam);
@@ -87,16 +81,15 @@ async function run() {
 
     // all product get
     app.get("/assets", async (req, res) => {
+      const queryObj = {};
+      const name = req.query.name;
+      const type = req.query.type;
 
-      const queryObj = {}
-      const name = req.query.name
-      const type = req.query.type
-
-      if(name){
-        queryObj.name = {$regex: new RegExp(name, 'i')} ;
+      if (name) {
+        queryObj.name = { $regex: new RegExp(name, "i") };
       }
-      if(type){
-        queryObj.type = {$regex: new RegExp(type)} 
+      if (type) {
+        queryObj.type = { $regex: new RegExp(type) };
       }
       const result = await assetCollection.find(queryObj).toArray();
       res.send(result);
@@ -127,7 +120,6 @@ async function run() {
 
     app.get("/custom-asset/:id", async (req, res) => {
       const id = req.params.id;
-      //console.log(id);
       const result = await assetCustomRequestCollection.findOne({
         _id: new ObjectId(id),
       });
@@ -137,8 +129,40 @@ async function run() {
     // request asset
     app.post("/request-asset", async (req, res) => {
       const asset = req.body;
-      const result = await assetRequestCollection.insertOne(asset);
-      res.send(result);
+      const existingAsset = await assetRequestCollection.findOne({
+        name: asset.name,
+        type: asset.type,
+        email: asset.email,
+      });
+
+      if (existingAsset) {
+        await assetRequestCollection.updateOne(
+          {
+            name: asset.name,
+            type: asset.type,
+            email: asset.email,
+          },
+          { $inc: { requestCount: 1 } }
+        );
+      } else {
+        await assetRequestCollection.insertOne({
+          ...asset,
+          requestCount: 1,
+          date: new Date(),
+          status: "pending",
+        });
+      }
+      
+      res.send(existingAsset);
+    });
+
+    app.get("/top-product", async (req, res) => {
+      const topProducts = await assetRequestCollection
+        .find({})
+        .sort({ requestCount: -1 })
+        .limit(4)
+        .toArray();
+        res.send(topProducts)
     });
 
     // get all request asset
@@ -146,16 +170,13 @@ async function run() {
       const adminEmail = req.params.adminEmail;
       const queryObj = {
         adminEmail,
-      }
-      const email = req.query.email
-      // const type = req.query.type
+      };
+      const email = req.query.email;
 
-      if(email){
-        queryObj.email = {$regex: new RegExp(email, 'i')} ;
+      if (email) {
+        queryObj.email = { $regex: new RegExp(email, "i") };
       }
-      // if(type){
-      //   queryObj.type = {$regex: new RegExp(type)} 
-      // }
+
       const result = await assetRequestCollection.find(queryObj).toArray();
       res.send(result);
     });
@@ -171,26 +192,41 @@ async function run() {
       res.send(result);
     });
 
+    // get pending request max: 5 access only admin
+    app.get("/pending-products/:adminEmail", async (req, res) => {
+      const adminEmail = req.params.adminEmail;
+      const query = {
+        adminEmail: adminEmail,
+        status: "pending",
+      };
+      const result = await assetRequestCollection
+        .find(query)
+        .limit(5)
+        .toArray();
+      res.send(result);
+    });
+
     // my requested asset
     app.get("/request-assets/:email", async (req, res) => {
-      const adminEmail = req.params.email;
+      // const adminEmail = req.params.email;
+      const email = req.params.email;
+      console.log(email);
       const queryObj = {
-        adminEmail,
-      }
-      const name = req.query.name
-      const type = req.query.type
+        // adminEmail,
+        email,
+      };
+      const name = req.query.name;
+      const type = req.query.type;
 
-      if(name){
-        queryObj.name = {$regex: new RegExp(name, 'i')} ;
+      if (name) {
+        queryObj.name = { $regex: new RegExp(name, "i") };
       }
-      if(type){
-        queryObj.type = {$regex: new RegExp(type)} 
+      if (type) {
+        queryObj.type = { $regex: new RegExp(type) };
       }
       const result = await assetRequestCollection.find(queryObj).toArray();
       res.send(result);
     });
-
-
 
     // delete
     app.delete("/request-asset/:id", async (req, res) => {
@@ -258,35 +294,36 @@ async function run() {
       res.send(result);
     });
 
-    // get all assets access only admin 
+    // get all assets access only admin
     app.get("/assets/:email", async (req, res) => {
       const email = req.params.email;
 
       const queryObj = {
         email,
-      }
-      const sortObj = {}
+      };
+      const sortObj = {};
 
-      const name = req.query.name
-      const type = req.query.type
-      const sortField = req.query.sortField
-      const sortOrder = req.query.sortOrder
+      const name = req.query.name;
+      const type = req.query.type;
+      const sortField = req.query.sortField;
+      const sortOrder = req.query.sortOrder;
 
+      if (name) {
+        queryObj.name = { $regex: new RegExp(name, "i") };
+      }
+      if (type) {
+        queryObj.type = { $regex: new RegExp(type) };
+      }
+      if (sortField && sortOrder) {
+        sortObj[sortField] = sortOrder;
+      }
 
-      if(name){
-        queryObj.name = {$regex: new RegExp(name, 'i')} ;
-      }
-      if(type){
-        queryObj.type = {$regex: new RegExp(type)} 
-      }
-      if(sortField && sortOrder){
-        sortObj[sortField] = sortOrder
-      }
-
-      const result = await assetCollection.find(queryObj).sort(sortObj).toArray();
+      const result = await assetCollection
+        .find(queryObj)
+        .sort(sortObj)
+        .toArray();
       res.send(result);
     });
-
 
     // single asset delete
     app.delete("/asset/:id", async (req, res) => {
@@ -405,7 +442,6 @@ async function run() {
       const updateProduct = {
         $set: {
           role: "admin",
-          // limit: limit,
         },
         $inc: {
           limit: limit,
